@@ -5,7 +5,6 @@ Fetch monthly portfolio composition (top holdings) for each fund and write to `C
 
 ## Source
 - mfapi.in: `https://api.mfapi.in/mf/{scheme_code}/portfolio` (unofficial, no auth)
-- AMFI monthly disclosure PDFs as fallback
 
 ## Behaviour
 1. For each scheme code in portfolio, GET `/mf/{scheme_code}/portfolio`.

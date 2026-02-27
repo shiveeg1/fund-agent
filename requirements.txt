@@ -13,9 +13,6 @@ google-api-python-client>=2.100.0
 scipy>=1.11.0
 pyxirr>=0.10.0
 
-# PDF parsing (CAMS statements)
-pdfplumber>=0.10.0
-
 # Scheduling
 APScheduler>=3.10.0
 

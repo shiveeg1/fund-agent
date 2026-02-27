@@ -56,7 +56,7 @@ sip-portfolio/
 │   └── .claude/hooks/         ← Claude Code hook configs (see hooks/)
 │
 ├── tests/
-│   ├── fixtures/              ← sample AMFI files, CAMS PDFs, mock API responses
+│   ├── fixtures/              ← sample AMFI files, CAMS JSON exports, mock API responses
 │   └── test_*.py              ← one test file per tool
 │
 └── notebooks/

@@ -44,6 +44,11 @@ TOOLS_IN_ORDER = [
     ("sheets_writer", sheets_writer),
 ]
 
+# TMP: run only cams_parser for manual verification
+_ACTIVE_TOOLS = [
+    ("cams_parser", cams_parser),
+]
+
 
 def run_workflow(config: Config) -> dict[str, Any]:
     """Run the full SIP portfolio workflow and return a summary of results."""
@@ -53,7 +58,7 @@ def run_workflow(config: Config) -> dict[str, Any]:
     results: dict[str, Any] = {}
     context: dict[str, Any] = {}  # shared data passed between tools
 
-    for tool_name, tool_module in TOOLS_IN_ORDER:
+    for tool_name, tool_module in _ACTIVE_TOOLS:
         logger.info("Running tool: %s", tool_name)
         tool_start = time.perf_counter()
         try:

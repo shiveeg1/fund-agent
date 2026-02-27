@@ -1,5 +1,5 @@
 """
-cams_parser.py — Parses CAMS consolidated account statements (PDF or JSON) to extract SIP transactions.
+cams_parser.py — Parses CAMS consolidated account statements (JSON) to extract SIP transactions.
 
 Spec: specs/tool_cams_parser.md
 
@@ -11,13 +11,10 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-
-import pdfplumber
 
 
 # Transaction types that carry financial data (AMOUNT + UNITS populated)
@@ -38,9 +35,9 @@ _FINANCIAL_TXN_TYPES: set[str] = {
 
 def run(config: Any, logger: logging.Logger, context: dict[str, Any]) -> dict[str, Any]:
     """
-    Parse CAMS statement files (PDF and/or JSON) and write SIP transactions to Sheets.
+    Parse CAMS statement files (JSON) and write SIP transactions to Sheets.
 
-    Looks for *.pdf and *.json files in data/cams/ relative to project root.
+    Looks for *.json files in data/cams/ relative to project root.
 
     Args:
         config:  Config dataclass instance.
@@ -56,11 +53,10 @@ def run(config: Any, logger: logging.Logger, context: dict[str, Any]) -> dict[st
 
     try:
         cams_dir = Path("data/cams")
-        pdf_files = sorted(cams_dir.glob("*.pdf")) if cams_dir.exists() else []
         json_files = sorted(cams_dir.glob("*.json")) if cams_dir.exists() else []
 
-        if not pdf_files and not json_files:
-            logger.warning("No CAMS files found in %s — skipping.", cams_dir)
+        if not json_files:
+            logger.warning("No CAMS JSON files found in %s — skipping.", cams_dir)
             return {
                 "status": "skipped",
                 "rows_written": 0,
@@ -77,16 +73,6 @@ def run(config: Any, logger: logging.Logger, context: dict[str, Any]) -> dict[st
                 all_transactions.extend(txns)
             except Exception as exc:
                 logger.error("Failed to parse %s: %s", json_path, exc)
-                errors.append(str(exc))
-                raise
-
-        for pdf_path in pdf_files:
-            logger.info("Parsing CAMS PDF: %s", pdf_path)
-            try:
-                txns = _parse_cams_pdf(pdf_path, logger)
-                all_transactions.extend(txns)
-            except Exception as exc:
-                logger.error("Failed to parse %s: %s", pdf_path, exc)
                 errors.append(str(exc))
                 raise
 
@@ -186,57 +172,6 @@ def _parse_cams_json(json_path: Path, logger: logging.Logger) -> list[dict[str, 
     )
     return transactions
 
-
-def _parse_cams_pdf(pdf_path: Path, logger: logging.Logger) -> list[dict[str, Any]]:
-    """
-    Extract SIP transaction rows from a CAMS consolidated statement PDF.
-
-    Pattern: DD-MMM-YYYY  <TxnType>  <amount>  <units>  <nav>
-
-    Returns list of dicts: scheme_name, folio, transaction_date, amount, units, nav, txn_type.
-    """
-    # Regex: date  txn-type  amount(commas ok)  units  nav
-    _TXN_RE = re.compile(
-        r"(\d{2}-[A-Z]{3}-\d{4})\s+"
-        r"(Purchase|SIP|Redemption|Switch(?:-In|-Out)?|Systematic[^\d]+?)\s+"
-        r"([\d,]+\.?\d*)\s+"
-        r"([\d,]+\.?\d*)\s+"
-        r"([\d,]+\.?\d*)",
-        re.IGNORECASE,
-    )
-
-    transactions: list[dict[str, Any]] = []
-    current_scheme: str = ""
-    current_folio: str = ""
-
-    with pdfplumber.open(pdf_path) as pdf:
-        for page in pdf.pages:
-            text = page.extract_text() or ""
-            for line in text.splitlines():
-                # Detect scheme / folio header lines
-                folio_match = re.search(r"Folio\s*(?:No\.?|Number)?[:\s]+(\S+)", line, re.IGNORECASE)
-                if folio_match:
-                    current_folio = folio_match.group(1).strip()
-
-                scheme_match = re.match(r"^([A-Z].{10,}(?:Fund|Plan|Scheme|Growth|Dividend))", line)
-                if scheme_match:
-                    current_scheme = scheme_match.group(1).strip()
-
-                txn_match = _TXN_RE.search(line)
-                if txn_match:
-                    date_str, txn_type_raw, amount_str, units_str, nav_str = txn_match.groups()
-                    transactions.append({
-                        "folio": current_folio,
-                        "scheme_name": current_scheme,
-                        "transaction_date": _parse_trade_date(date_str),
-                        "txn_type": _normalise_txn_type(txn_type_raw),
-                        "amount": float(amount_str.replace(",", "")),
-                        "units": float(units_str.replace(",", "")),
-                        "nav": float(nav_str.replace(",", "")),
-                    })
-
-    logger.debug("Extracted %d transactions from %s", len(transactions), pdf_path)
-    return transactions
 
 
 def _parse_trade_date(date_str: str) -> str:
