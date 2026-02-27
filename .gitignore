@@ -1,0 +1,29 @@
+# Secrets — never commit
+.env
+*.json
+
+# Allow committed files
+!.env.example
+!tests/fixtures/*.json
+!hooks/.claude/hooks/settings.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# macOS
+.DS_Store
+
+# Data directory (may contain sensitive PDFs)
+data/cams/
+
+# Logs
+*.log
