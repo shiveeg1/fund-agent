@@ -1,7 +1,7 @@
 """
-llm_analyst.py — Calls Claude API to interpret computed metrics and generate analysis narrative.
+llm_analyst.py — Calls Gemini API to interpret computed metrics and generate analysis narrative.
 
-NOTE: This tool ONLY calls Claude for interpretation. All metrics must already be computed
+NOTE: This tool ONLY calls Gemini for interpretation. All metrics must already be computed
 by metrics_engine.py. Never compute financial numbers here.
 
 Spec: specs/tool_llm_analyst.md
@@ -13,7 +13,7 @@ import logging
 import time
 from typing import Any
 
-import anthropic
+import google.generativeai as genai
 
 
 def run(config: Any, logger: logging.Logger, context: dict[str, Any]) -> dict[str, Any]:
@@ -45,7 +45,7 @@ def run(config: Any, logger: logging.Logger, context: dict[str, Any]) -> dict[st
                 "duration_s": round(time.perf_counter() - start, 3),
             }
 
-        analysis = _call_claude_analyst(
+        analysis = _call_gemini_analyst(
             config=config,
             metrics=metrics,
             peer_records=peer_records,
@@ -75,37 +75,39 @@ def run(config: Any, logger: logging.Logger, context: dict[str, Any]) -> dict[st
     }
 
 
-def _call_claude_analyst(
+def _call_gemini_analyst(
     config: Any,
     metrics: list[dict[str, Any]],
     peer_records: list[dict[str, Any]],
     logger: logging.Logger,
 ) -> str:
     """
-    Call Claude API with metrics data and return the analysis narrative.
+    Call Gemini API with metrics data and return the analysis narrative.
     Uses prompt template from specs/llm_prompts.md — ANALYST_PROMPT.
     """
-    client = anthropic.Anthropic(api_key=config.anthropic_api_key)
+    genai.configure(api_key=config.gemini_api_key)
+    model = genai.GenerativeModel("gemini-1.5-flash")
 
     metrics_summary = _format_metrics_for_prompt(metrics)
     peer_summary = _format_peer_for_prompt(peer_records)
 
     prompt = (
-        "You are a mutual fund analyst. Below are the computed portfolio metrics.\n"
-        "Provide a concise interpretation (3-5 bullet points) of portfolio health, "
-        "highlighting any funds that are underperforming peers or showing elevated risk.\n\n"
+        "You are a mutual fund analyst reviewing a SIP portfolio.\n"
+        "Below are computed metrics for each fund. All numbers are pre-computed — do NOT "
+        "recalculate or estimate any figures yourself.\n\n"
         f"## Portfolio Metrics\n{metrics_summary}\n\n"
         f"## Peer Comparison\n{peer_summary}\n\n"
-        "Do NOT recompute any numbers. Only interpret what is given."
+        "## Instructions\n"
+        "- Provide 3–5 bullet points interpreting overall portfolio health.\n"
+        "- Flag any fund with Sharpe < 0.5 or peer rank in bottom quartile.\n"
+        "- Note any concentration risk (single sector > 30% of a fund).\n"
+        "- Keep each bullet under 40 words.\n"
+        "- Do NOT suggest specific buy/sell actions — that is the advisor's role."
     )
 
-    logger.info("Calling Claude API for portfolio analysis.")
-    message = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=1024,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    return message.content[0].text
+    logger.info("Calling Gemini API for portfolio analysis.")
+    response = model.generate_content(prompt)
+    return response.text
 
 
 def _format_metrics_for_prompt(metrics: list[dict[str, Any]]) -> str:

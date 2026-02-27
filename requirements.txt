@@ -19,8 +19,8 @@ pdfplumber>=0.10.0
 # Scheduling
 APScheduler>=3.10.0
 
-# Anthropic
-anthropic>=0.34.0
+# Gemini
+google-generativeai>=0.8.0
 
 # Testing
 pytest>=7.4.0

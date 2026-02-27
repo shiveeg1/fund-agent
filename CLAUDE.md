@@ -65,7 +65,7 @@ sip-portfolio/
 
 ## Environment Variables (see .env.example)
 GOOGLE_SHEETS_ID, GOOGLE_SERVICE_ACCOUNT_JSON,
-ANTHROPIC_API_KEY, AMFI_BASE_URL
+GEMINI_API_KEY, AMFI_BASE_URL
 
 ## Conventions Claude Must Follow
 - All tools are pure functions: `def run(config, logger) -> dict`

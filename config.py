@@ -25,8 +25,8 @@ class Config:
         default_factory=lambda: _require("GOOGLE_SERVICE_ACCOUNT_JSON")
     )
 
-    # Anthropic
-    anthropic_api_key: str = field(default_factory=lambda: _require("ANTHROPIC_API_KEY"))
+    # Gemini
+    gemini_api_key: str = field(default_factory=lambda: _require("GEMINI_API_KEY"))
 
     # AMFI
     amfi_base_url: str = field(

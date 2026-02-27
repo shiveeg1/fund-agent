@@ -1,7 +1,7 @@
 """
-llm_advisor.py — Calls Claude API to generate rebalancing recommendations.
+llm_advisor.py — Calls Gemini API to generate rebalancing recommendations.
 
-NOTE: This tool ONLY calls Claude for recommendations. All metrics must already
+NOTE: This tool ONLY calls Gemini for recommendations. All metrics must already
 be computed by metrics_engine.py. Never compute financial numbers here.
 
 Spec: specs/tool_llm_advisor.md
@@ -13,7 +13,7 @@ import logging
 import time
 from typing import Any
 
-import anthropic
+import google.generativeai as genai
 
 
 def run(config: Any, logger: logging.Logger, context: dict[str, Any]) -> dict[str, Any]:
@@ -47,7 +47,7 @@ def run(config: Any, logger: logging.Logger, context: dict[str, Any]) -> dict[st
                 "duration_s": round(time.perf_counter() - start, 3),
             }
 
-        recommendations = _call_claude_advisor(
+        recommendations = _call_gemini_advisor(
             config=config,
             metrics=metrics,
             overlap_records=overlap_records,
@@ -79,7 +79,7 @@ def run(config: Any, logger: logging.Logger, context: dict[str, Any]) -> dict[st
     }
 
 
-def _call_claude_advisor(
+def _call_gemini_advisor(
     config: Any,
     metrics: list[dict[str, Any]],
     overlap_records: list[dict[str, Any]],
@@ -88,31 +88,39 @@ def _call_claude_advisor(
     logger: logging.Logger,
 ) -> str:
     """
-    Call Claude API with metrics and overlap data, return rebalancing recommendations.
+    Call Gemini API with metrics and overlap data, return rebalancing recommendations.
     Uses prompt template from specs/llm_prompts.md — ADVISOR_PROMPT.
     """
-    client = anthropic.Anthropic(api_key=config.anthropic_api_key)
+    genai.configure(api_key=config.gemini_api_key)
+    model = genai.GenerativeModel("gemini-1.5-flash")
 
     guidelines_text = "\n".join(f"- {k}: {v}" for k, v in guidelines.items()) or "None specified."
     overlap_text = _format_overlap_for_prompt(overlap_records)
+    metrics_summary = "\n".join(
+        f"- {m.get('scheme_name', 'Unknown')}: XIRR={m.get('xirr', 'N/A')}, "
+        f"Sharpe={m.get('sharpe', 'N/A')}, Beta={m.get('beta', 'N/A')}"
+        for m in metrics
+    ) if metrics else "No metrics available."
 
     prompt = (
-        "You are a portfolio advisor. Based on the analysis and metrics below, "
-        "provide specific rebalancing recommendations (add/reduce/exit funds) "
-        "following the portfolio guidelines.\n\n"
+        "You are a portfolio rebalancing advisor.\n"
+        "All metrics have been pre-computed. Do NOT invent or estimate any numbers.\n\n"
         f"## Portfolio Guidelines\n{guidelines_text}\n\n"
-        f"## Prior Analysis\n{analysis or 'None.'}\n\n"
-        f"## Fund Overlap\n{overlap_text}\n\n"
-        "List 3-5 actionable recommendations. Do NOT invent numbers."
+        f"## Prior Analysis (from Analyst)\n{analysis or 'None.'}\n\n"
+        f"## Fund Overlap (Jaccard > 0.4 flagged)\n{overlap_text}\n\n"
+        f"## Current Metrics\n{metrics_summary}\n\n"
+        "## Instructions\n"
+        "- Provide exactly 3–5 numbered rebalancing recommendations.\n"
+        "- Each recommendation: specify the fund, the action (increase SIP / reduce SIP / exit / hold), "
+        "and the reason (1 sentence max, referencing the data above).\n"
+        "- Do NOT suggest funds not currently in the portfolio unless exiting one.\n"
+        "- Do NOT compute returns, tax, or any financial metric.\n"
+        "- Respect the Portfolio Guidelines above."
     )
 
-    logger.info("Calling Claude API for rebalancing recommendations.")
-    message = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=1024,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    return message.content[0].text
+    logger.info("Calling Gemini API for rebalancing recommendations.")
+    response = model.generate_content(prompt)
+    return response.text
 
 
 def _format_overlap_for_prompt(overlap_records: list[dict[str, Any]]) -> str:
