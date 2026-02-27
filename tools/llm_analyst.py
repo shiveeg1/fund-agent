@@ -13,7 +13,7 @@ import logging
 import time
 from typing import Any
 
-import google.generativeai as genai
+from google import genai
 
 
 def run(config: Any, logger: logging.Logger, context: dict[str, Any]) -> dict[str, Any]:
@@ -85,8 +85,7 @@ def _call_gemini_analyst(
     Call Gemini API with metrics data and return the analysis narrative.
     Uses prompt template from specs/llm_prompts.md — ANALYST_PROMPT.
     """
-    genai.configure(api_key=config.gemini_api_key)
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    client = genai.Client(api_key=config.gemini_api_key)
 
     metrics_summary = _format_metrics_for_prompt(metrics)
     peer_summary = _format_peer_for_prompt(peer_records)
@@ -106,7 +105,7 @@ def _call_gemini_analyst(
     )
 
     logger.info("Calling Gemini API for portfolio analysis.")
-    response = model.generate_content(prompt)
+    response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
     return response.text
 
 

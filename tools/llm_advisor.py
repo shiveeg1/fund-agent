@@ -13,7 +13,7 @@ import logging
 import time
 from typing import Any
 
-import google.generativeai as genai
+from google import genai
 
 
 def run(config: Any, logger: logging.Logger, context: dict[str, Any]) -> dict[str, Any]:
@@ -91,8 +91,7 @@ def _call_gemini_advisor(
     Call Gemini API with metrics and overlap data, return rebalancing recommendations.
     Uses prompt template from specs/llm_prompts.md — ADVISOR_PROMPT.
     """
-    genai.configure(api_key=config.gemini_api_key)
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    client = genai.Client(api_key=config.gemini_api_key)
 
     guidelines_text = "\n".join(f"- {k}: {v}" for k, v in guidelines.items()) or "None specified."
     overlap_text = _format_overlap_for_prompt(overlap_records)
@@ -119,7 +118,7 @@ def _call_gemini_advisor(
     )
 
     logger.info("Calling Gemini API for rebalancing recommendations.")
-    response = model.generate_content(prompt)
+    response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
     return response.text
 
 

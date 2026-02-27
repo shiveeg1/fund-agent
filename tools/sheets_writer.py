@@ -76,7 +76,17 @@ def append_timeseries(
         return 0
 
     service = _get_service(config)
-    rows = _records_to_rows(records)
+
+    # Check if the tab already has data; if empty, prepend a header row
+    existing = (
+        service.spreadsheets()
+        .values()
+        .get(spreadsheetId=config.google_sheets_id, range=f"{tab}!A1")
+        .execute()
+    )
+    tab_is_empty = not existing.get("values")
+
+    rows = _records_to_rows(records, include_header=tab_is_empty)
 
     body = {"values": rows}
     range_notation = f"{tab}!A1"
@@ -120,9 +130,12 @@ def _get_service(config: Any) -> Any:
     return service
 
 
-def _records_to_rows(records: list[dict[str, Any]]) -> list[list[Any]]:
-    """Convert a list of dicts to a 2-D list (no header row — values only)."""
+def _records_to_rows(records: list[dict[str, Any]], include_header: bool = False) -> list[list[Any]]:
+    """Convert a list of dicts to a 2-D list, optionally prepending a header row."""
     if not records:
         return []
     keys = list(records[0].keys())
-    return [[row.get(k, "") for k in keys] for row in records]
+    rows = [[row.get(k, "") for k in keys] for row in records]
+    if include_header:
+        rows.insert(0, keys)
+    return rows
