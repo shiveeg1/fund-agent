@@ -34,7 +34,21 @@ def run(config: Any, logger: logging.Logger, context: dict[str, Any]) -> dict[st
         response.raise_for_status()
 
         nav_records = _parse_amfi_nav(response.text)
-        logger.info("Parsed %d NAV records.", len(nav_records))
+        logger.info("Parsed %d NAV records from AMFI.", len(nav_records))
+
+        scheme_codes = config.portfolio_scheme_codes
+        if scheme_codes:
+            nav_records = [r for r in nav_records if r["scheme_code"] in scheme_codes]
+            logger.info(
+                "Filtered to %d records matching %d portfolio scheme codes.",
+                len(nav_records),
+                len(scheme_codes),
+            )
+        else:
+            logger.warning(
+                "PORTFOLIO_SCHEME_CODES is not set — writing all %d records.",
+                len(nav_records),
+            )
 
         # Write to Sheets via sheets_writer (imported lazily to avoid circular deps)
         from tools import sheets_writer  # noqa: PLC0415

@@ -34,6 +34,13 @@ class Config:
             "AMFI_BASE_URL", "https://www.amfiindia.com/spages/NAVAll.txt"
         )
     )
+    portfolio_scheme_codes: set[str] = field(
+        default_factory=lambda: {
+            code.strip()
+            for code in os.getenv("PORTFOLIO_SCHEME_CODES", "").split(",")
+            if code.strip()
+        }
+    )
 
     # Scheduler
     run_hour: int = field(default_factory=lambda: int(os.getenv("RUN_HOUR", "8")))

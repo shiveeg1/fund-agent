@@ -97,7 +97,7 @@ def append_timeseries(
         .append(
             spreadsheetId=config.google_sheets_id,
             range=range_notation,
-            valueInputOption="USER_ENTERED",
+            valueInputOption="RAW",
             insertDataOption="INSERT_ROWS",
             body=body,
         )
@@ -106,7 +106,33 @@ def append_timeseries(
 
     updated_rows = result.get("updates", {}).get("updatedRows", len(rows))
     logger.info("Appended %d rows to tab '%s'.", updated_rows, tab)
+
+    if tab_is_empty:
+        _clear_tab_bold(service, config.google_sheets_id, tab)
+
     return updated_rows
+
+
+def _clear_tab_bold(service: Any, spreadsheet_id: str, tab: str) -> None:
+    """Remove bold formatting from every cell in the tab."""
+    metadata = service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
+    sheet_id = next(
+        (s["properties"]["sheetId"] for s in metadata.get("sheets", [])
+         if s["properties"]["title"] == tab),
+        None,
+    )
+    if sheet_id is None:
+        return
+    service.spreadsheets().batchUpdate(
+        spreadsheetId=spreadsheet_id,
+        body={"requests": [{
+            "repeatCell": {
+                "range": {"sheetId": sheet_id},
+                "cell": {"userEnteredFormat": {"textFormat": {"bold": False}}},
+                "fields": "userEnteredFormat.textFormat.bold",
+            }
+        }]},
+    ).execute()
 
 
 def _get_service(config: Any) -> Any:
