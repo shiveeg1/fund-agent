@@ -35,12 +35,6 @@ class Config:
         )
     )
 
-    # Twilio
-    twilio_account_sid: str = field(default_factory=lambda: os.getenv("TWILIO_ACCOUNT_SID", ""))
-    twilio_auth_token: str = field(default_factory=lambda: os.getenv("TWILIO_AUTH_TOKEN", ""))
-    twilio_from_number: str = field(default_factory=lambda: os.getenv("TWILIO_FROM_NUMBER", ""))
-    twilio_to_number: str = field(default_factory=lambda: os.getenv("TWILIO_TO_NUMBER", ""))
-
     # Scheduler
     run_hour: int = field(default_factory=lambda: int(os.getenv("RUN_HOUR", "8")))
     run_minute: int = field(default_factory=lambda: int(os.getenv("RUN_MINUTE", "0")))
