@@ -22,8 +22,8 @@ build/
 # macOS
 .DS_Store
 
-# Data directory (may contain sensitive PDFs)
-data/cams/
+# Data directory (contains personal financial files — never commit)
+data/
 
 # Logs
 *.log
