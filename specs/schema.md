@@ -1,6 +1,6 @@
 # Google Sheets Schema — SIP Portfolio Workbook
 
-All 14 tabs are listed below with their column definitions.
+All 15 tabs are listed below with their column definitions.
 No new tabs should be created outside this schema.
 
 ---
@@ -186,3 +186,20 @@ No new tabs should be created outside this schema.
 | portfolio_xirr | float | Portfolio-level XIRR (%) |
 | portfolio_sharpe | float | Portfolio-level Sharpe ratio |
 | estimated_tax | float | Estimated tax if fully redeemed (₹) |
+
+---
+
+## 15. AMFI_YAHOO_CODES
+*Static reference tab — read by main.py at startup. Not written by any tool.*
+
+Single source of truth for AMFI scheme codes and their Yahoo Finance ticker mapping.
+Used to populate `PORTFOLIO_SCHEME_CODES` env var and by `metrics_engine` to fetch
+precomputed risk ratios via yfinance.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| scheme_code | string | AMFI numeric scheme code |
+| scheme_name | string | Full AMFI scheme name |
+| fund_house | string | AMC name (e.g. "HDFC Mutual Fund") |
+| yahoo_ticker | string | Yahoo Finance ticker (e.g. `0P0001EI12.BO`); blank if not yet mapped |
+| scheme_category | string | Fund category (e.g. "Equity", "Debt", "Index", "Hybrid", "Commodity") |

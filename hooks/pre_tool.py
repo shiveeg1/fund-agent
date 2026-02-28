@@ -14,6 +14,10 @@ import re
 import sys
 from pathlib import Path
 
+# Matches python / python3 / pytest / pip / pip3 as the first token or after common
+# shell control characters, so we don't false-positive on e.g. "grep python".
+_PYTHON_CMD_RE = re.compile(r"(?:^|[;&|`(]\s*)(?:python3?|pytest|pip3?)\b")
+
 logger = logging.getLogger(__name__)
 
 REQUIRED_ENV_VARS = [
@@ -50,6 +54,24 @@ def _blocks_env_access(tool_name: str, tool_input: dict) -> str | None:
             )
 
     return None
+
+
+def _blocks_python_without_venv(tool_name: str, tool_input: dict) -> str | None:
+    """
+    Return an error message if a Bash command runs Python without an active venv, else None.
+    Checks for the VIRTUAL_ENV environment variable set by `source venv/bin/activate`.
+    """
+    if tool_name != "Bash":
+        return None
+    command = tool_input.get("command", "")
+    if not _PYTHON_CMD_RE.search(command):
+        return None
+    if os.getenv("VIRTUAL_ENV"):
+        return None
+    return (
+        "Blocked: no virtual environment is active. "
+        "Run `source venv/bin/activate` (or your venv equivalent) before executing Python commands."
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -93,7 +115,7 @@ def run() -> None:
         tool_name = payload.get("tool_name", "")
         tool_input = payload.get("tool_input", {})
 
-        error = _blocks_env_access(tool_name, tool_input)
+        error = _blocks_env_access(tool_name, tool_input) or _blocks_python_without_venv(tool_name, tool_input)
         if error:
             print(error)
             sys.exit(2)
